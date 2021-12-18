@@ -148,48 +148,50 @@ class DataSeo {
 
         $dbLogs = [];
         $date = date('Y-m-d H:i:s');
-        foreach ($this->result['tasks'][0]['result'][0]['items'] as $items){
-            foreach ($items as $key => $item){
+        if(!empty($this->result['tasks'][0]['result'][0]['items'])) {
+            foreach ($this->result['tasks'][0]['result'][0]['items'] as $items) {
+                foreach ($items as $key => $item) {
 
-                $log = [];
-                foreach (self::configTable as $col=>$lengh){
-                    switch ($col){
-                        case 'excluded_target':
-                            $text = '';
-                            if($this->excludeTargets){
-                                $text = $this->excludeTargets;
-                            }
-                            $log['excluded_target'] = $text;
-                            $out .= $this->printColum($text, $lengh);
-                            break;
-                        case 'target_domain':
-                            $text = $this->domainsClient[$key] ?? '';
-                            $log['target_domain'] = $text;
-                            $out .= $this->printColum($text, $lengh);
-                            break;
-                        case 'referring_domain':
-                            $text = $item['target'] ?? '';
-                            $log['referring_domain'] = $text;
-                            $out .= $this->printColum($text, $lengh);
-                            break;
-                        case 'rank':
-                            $text = (string)( $item['rank'] ?? '');
-                            $log['rank'] = $text;
-                            $out .= $this->printColum($text, $lengh);
-                            break;
-                        case 'first_seen':
-                        case 'lost_date':
-                            $text = $item[$col] ?? '';
-                            $out .= $this->printColum($text, $lengh);
-                            break;
+                    $log = [];
+                    foreach (self::configTable as $col => $lengh) {
+                        switch ($col) {
+                            case 'excluded_target':
+                                $text = '';
+                                if ($this->excludeTargets) {
+                                    $text = $this->excludeTargets;
+                                }
+                                $log['excluded_target'] = $text;
+                                $out .= $this->printColum($text, $lengh);
+                                break;
+                            case 'target_domain':
+                                $text = $this->domainsClient[$key] ?? '';
+                                $log['target_domain'] = $text;
+                                $out .= $this->printColum($text, $lengh);
+                                break;
+                            case 'referring_domain':
+                                $text = $item['target'] ?? '';
+                                $log['referring_domain'] = $text;
+                                $out .= $this->printColum($text, $lengh);
+                                break;
+                            case 'rank':
+                                $text = (string)($item['rank'] ?? '');
+                                $log['rank'] = $text;
+                                $out .= $this->printColum($text, $lengh);
+                                break;
+                            case 'first_seen':
+                            case 'lost_date':
+                                $text = $item[$col] ?? '';
+                                $out .= $this->printColum($text, $lengh);
+                                break;
+                        }
                     }
-                }
-                $log['created_at'] = $date;
-                $log['updated_at'] = $date;
-                $dbLogs[] = $log;
+                    $log['created_at'] = $date;
+                    $log['updated_at'] = $date;
+                    $dbLogs[] = $log;
 
-                $out .= PHP_EOL;
-                $out .= $this->printDivider('-');
+                    $out .= PHP_EOL;
+                    $out .= $this->printDivider('-');
+                }
             }
         }
 
