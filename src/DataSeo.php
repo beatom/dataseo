@@ -127,6 +127,11 @@ class DataSeo {
 
         $out .= 'status_code = '.( $this->result['tasks'][0]['status_code'] ?? 'unknown' ).PHP_EOL;
         $out .= 'status_message = '.( $this->result['tasks'][0]['status_message'] ?? 'unknown' ).PHP_EOL;
+        
+        if($this->result['tasks'][0]['status_code'] != 20000 ){
+            echo $out;
+            return;
+        }
 
         $out .= $this->printDivider('=');
 
