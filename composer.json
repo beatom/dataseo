@@ -1,0 +1,29 @@
+{
+    "name": "beatom/dataseo",
+    "description": "Демонстрационный пакет в рамках статьи о создании пакета composer",
+    "authors": [
+        {
+            "name": "beatom.net",
+            "email": "project@beatom.net"
+        }
+    ],
+    "require": {
+        "php": ">=7.3.0"
+    },
+    "require-dev": {
+
+    },
+    "minimum-stability": "dev",
+    "autoload": {
+        "psr-4": {
+            "Beatom\\DataSeo\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Beatom\\DataSeo\\HelperServiceProvider"
+            ]
+        }
+    }
+}
