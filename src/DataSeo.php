@@ -9,25 +9,15 @@ use Illuminate\Support\Facades\DB;
  */
 class DataSeo {
 
-    const configTable = [
-            'excluded_target' => 30,
-            'target_domain' => 30,
-            'referring_domain' => 30,
-            'rank' => 7,
-            'first_seen' => 30,
-            'lost_date' => 30,
-        ];
-    const lenghTable = 162;
     const LOG_TABLE = 'log_data_seo';
-
 
     protected $apiUrl = 'https://api.dataforseo.com/';
     protected $client;
     protected $domainsClient;
     protected $excludeTargetsClient;
-
-    protected $domains;
     protected $excludeTargets;
+
+    protected $consolePrint;
 
     public $result = [];
 
@@ -36,7 +26,6 @@ class DataSeo {
 
         require_once 'RestClient/RestClient.php';
 
-        $this->domains = $domains;
         $this->domainsClient = $this->convertParam($domains, true);
         $this->excludeTargets = $excludeTargets;
         $this->excludeTargetsClient = $this->convertParam($excludeTargets);
@@ -47,6 +36,8 @@ class DataSeo {
             config('dataseo.login'),
             config('dataseo.password')
         );
+
+        $this->consolePrint = new ConsolePrint();
     }
 
     /**
@@ -75,6 +66,54 @@ class DataSeo {
         }
 
         return $out;
+    }
+
+    /**
+     * Cartesian Product build rows
+     * @return array|bool
+     */
+    private function buildCartesianProduct(){
+        if(!$this->excludeTargetsClient){
+            return false;
+        }
+
+        if(empty($this->result['tasks'][0]['result'][0]['items'])) {
+            return false;
+        }
+
+        $rows = [];
+        foreach ($this->excludeTargetsClient as $target_domain){
+            foreach ($this->result['tasks'][0]['result'][0]['items'] as $items){
+                foreach ($items as $key => $item) {
+                    $row = [];
+                    foreach (ConsolePrint::configTable as $col => $lengh) {
+
+                        switch ($col) {
+                            case 'excluded_target':
+                                $row['excluded_target'] = '';
+                                break;
+                            case 'target_domain':
+                                $row['target_domain'] = $target_domain;
+                                break;
+                            case 'referring_domain':
+                                $row['target'] = $item['target'] ?? '';
+                                break;
+                            case 'rank':
+                                $row['rank'] =  ($item['rank'] ?? 0);
+                                break;
+                            case 'first_seen':
+                            case 'lost_date':
+                            $row[$col] = $item[$col] ?? '';
+                                break;
+                        }
+                    }
+                    $rows[] = $row;
+                }
+            }
+        }
+
+
+        return $rows;
     }
 
     /**
@@ -107,6 +146,9 @@ class DataSeo {
 
             $this->printConsole();
 
+
+            $this->insertDB();
+
         } catch (\RestClientException $e) {
             echo PHP_EOL;
             echo "HTTP code: ".$e->getHttpCode().PHP_EOL;
@@ -127,106 +169,48 @@ class DataSeo {
 
         $out .= 'status_code = '.( $this->result['tasks'][0]['status_code'] ?? 'unknown' ).PHP_EOL;
         $out .= 'status_message = '.( $this->result['tasks'][0]['status_message'] ?? 'unknown' ).PHP_EOL;
-        
+
         if($this->result['tasks'][0]['status_code'] != 20000 ){
             echo $out;
             return;
         }
 
-        $out .= $this->printDivider('=');
+        $out .= $this->consolePrint->printDivider('=');
+        $out .= $this->consolePrint->printHeader();
+        $out .= $this->consolePrint->printDivider('=');
 
-        // table header
-        $out .= '     excluded_target          |';
-        $out .= '       target_domain          |';
-        $out .= '       referring_domain       |';
-        $out .= ' rank  |';
-        $out .= '          first_seen          |';
-        $out .= '          lost_date           |';
-        $out .= PHP_EOL;
-
-        $out .= $this->printDivider('=');
-
-        $dbLogs = [];
-        $date = date('Y-m-d H:i:s');
         if(!empty($this->result['tasks'][0]['result'][0]['items'])) {
             foreach ($this->result['tasks'][0]['result'][0]['items'] as $items) {
                 foreach ($items as $key => $item) {
 
-                    $log = [];
-                    foreach (self::configTable as $col => $lengh) {
-                        switch ($col) {
-                            case 'excluded_target':
-                                $text = '';
-                                if ($this->excludeTargets) {
-                                    $text = $this->excludeTargets;
-                                }
-                                $log['excluded_target'] = $text;
-                                $out .= $this->printColum($text, $lengh);
-                                break;
-                            case 'target_domain':
-                                $text = $this->domainsClient[$key] ?? '';
-                                $log['target_domain'] = $text;
-                                $out .= $this->printColum($text, $lengh);
-                                break;
-                            case 'referring_domain':
-                                $text = $item['target'] ?? '';
-                                $log['referring_domain'] = $text;
-                                $out .= $this->printColum($text, $lengh);
-                                break;
-                            case 'rank':
-                                $text = (string)($item['rank'] ?? '');
-                                $log['rank'] = $text;
-                                $out .= $this->printColum($text, $lengh);
-                                break;
-                            case 'first_seen':
-                            case 'lost_date':
-                                $text = $item[$col] ?? '';
-                                $out .= $this->printColum($text, $lengh);
-                                break;
-                        }
-                    }
-                    $log['created_at'] = $date;
-                    $log['updated_at'] = $date;
-                    $dbLogs[] = $log;
+                    $out.= $this->consolePrint->printRows(
+                        $item,
+                        $this->excludeTargets,
+                        $this->domainsClient[$key]
 
-                    $out .= PHP_EOL;
-                    $out .= $this->printDivider('-');
+                    );
                 }
             }
         }
 
-        DB::table(self::LOG_TABLE)->insert($dbLogs);
+        if($rows = $this->buildCartesianProduct()){
+
+            foreach ($rows as $row){
+                $out.= $this->consolePrint->printRows(
+                    $row,
+                    ''
+                );
+            }
+        }
 
         echo $out;
     }
 
-    /**
-     * @param string $text
-     * @param int $lengh
-     * @return string
-     */
-    private function printColum(string $text, int $lengh){
-        $out = ' '.$text;
-        $i = strlen($text)+1;
-        for ($i; $i<$lengh; $i++){
-            $out .= ' ';
-        }
-        $out .= '|';
 
-        return $out;
+
+    private function insertDB(){
+        DB::table(self::LOG_TABLE)->insert($this->consolePrint->getInsertDB());
     }
 
-    /**
-     * @param string $type
-     * @return string
-     */
-    private function printDivider($type = '-'){
-        $out = '';
-        for ($i=0; $i<self::lenghTable; $i++){
-            $out .= $type;
-        }
-        $out .= PHP_EOL;
-        return $out;
-    }
 
 }
